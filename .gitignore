@@ -221,3 +221,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# AQ Forecaster: generated files, rebuilt by running the pipeline
+/data/
+/runs/
