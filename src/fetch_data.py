@@ -5,22 +5,10 @@ import requests
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from config import ENV_PATH, FETCH_LOG_PATH, RAW_DATA_DIR, SENSORS, START_YEAR
+from log_setup import setup_logging
 from openaq_api import create_session, get_sensor_year
 
 logger = logging.getLogger(__name__)
-
-# Sends log messages to both the terminal and the log file
-def setup_logging():
-    FETCH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler(FETCH_LOG_PATH, encoding="utf-8"),
-        ],
-    )
 
 # A saved year is complete only if it was downloaded after that year ended
 def is_complete(path, year):
@@ -49,7 +37,7 @@ def save_rows(path, station, sensor_id, year, fetched_at, rows):
     temp_path.replace(path)
 
 def run_fetch():
-    setup_logging()
+    setup_logging(FETCH_LOG_PATH)
     load_dotenv(dotenv_path=ENV_PATH)
     RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
