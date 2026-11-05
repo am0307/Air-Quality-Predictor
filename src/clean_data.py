@@ -103,8 +103,10 @@ def apply_cleaning_rules(df):
     mark_removed(df, df["has_flags"], "provider_flagged")
     mark_removed(df, df["datetime_utc"] < pd.Timestamp(CLEAN_START_DATE, tz="UTC"), "before_start_date")
 
+    # Only compare rows that are still kept, so a removed row cannot make a valid one a duplicate
     kept = df["removal_reason"] == ""
-    mark_removed(df, kept & df.duplicated(subset=["station", "datetime_utc"]), "duplicate")
+    duplicates = df[kept].duplicated(subset=["station", "datetime_utc"]).reindex(df.index, fill_value=False)
+    mark_removed(df, duplicates, "duplicate")
     mark_removed(df, (df["pm25"] < PM25_MIN) | (df["pm25"] > PM25_MAX), "out_of_range")
 
     mark_stuck_readings(df)
