@@ -14,6 +14,11 @@ REMOVED_ROWS_PATH = ROOT_DIR / "data" / "clean" / "removed_rows.csv"
 CLEANING_REPORT_PATH = ROOT_DIR / "data" / "clean" / "cleaning_report.json"
 CLEAN_LOG_PATH = ROOT_DIR / "data" / "logs" / "clean_data.log"
 
+# Locations of the features, normalisation values, and feature log
+FEATURES_DIR = ROOT_DIR / "data" / "features"
+NORMALISATION_PATH = FEATURES_DIR / "normalisation.json"
+FEATURES_LOG_PATH = ROOT_DIR / "data" / "logs" / "build_features.log"
+
 # Local time zone
 TIMEZONE = "America/Toronto"
 
@@ -43,3 +48,16 @@ SPIKE_MIN_VALUE = 50 # Minimum reading to be considered a spike (µg/m³)
 SPIKE_RATIO = 3 # Ratio of the spike value to the maximum value from other stations
 SPIKE_WINDOW_HOURS = 3 # Hours checked on each side of the reading
 SPIKE_MIN_OTHER_STATIONS = 2 # Stations that must be reporting to make a fair comparison
+
+# Hours of past readings given to the model
+NUM_LAG_HOURS = 24
+
+# Longest stretch of missing hours filled in with the last known reading
+MAX_FILL_HOURS = 3
+
+# Exponentially weighted average betas, which average over roughly 1 / (1 - beta) hours
+EMA_BETAS = [0.9, 0.98]
+
+# Data is split by time into roughly 60% train, 20% dev, and 20% test, with smoke events in each
+DEV_START_DATE = "2025-07-01"
+TEST_START_DATE = "2026-03-01"
