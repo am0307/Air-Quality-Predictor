@@ -19,6 +19,11 @@ FEATURES_DIR = ROOT_DIR / "data" / "features"
 NORMALISATION_PATH = FEATURES_DIR / "normalisation.json"
 FEATURES_LOG_PATH = ROOT_DIR / "data" / "logs" / "build_features.log"
 
+# Locations of each run's saved results and the baseline logs
+RUNS_DIR = ROOT_DIR / "runs"
+PERSISTENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_persistence.log"
+LINEAR_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_linear.log"
+
 # Local time zone
 TIMEZONE = "America/Toronto"
 
@@ -61,3 +66,16 @@ EMA_BETAS = [0.9, 0.98]
 # Data is split by time into roughly 60% train, 20% dev, and 20% test, with smoke events in each
 DEV_START_DATE = "2025-07-01"
 TEST_START_DATE = "2026-03-01"
+
+# Hours with a reading at or above this (µg/m³) are reported as smoke, as the data has no smoke label
+SMOKE_MIN_PM25 = 35
+
+# Regularisation strengths compared on the dev set, which are large because the penalty is divided by 2m
+LINEAR_LAMBDAS = [0, 1, 10, 100, 1000, 10000]
+
+# Batch gradient descent settings, where the learning rate must stay below about 0.1 to converge
+LINEAR_LEARNING_RATE = 0.05
+LINEAR_ITERATIONS = 10000
+
+# Iterations between saved costs
+COST_RECORD_INTERVAL = 100
