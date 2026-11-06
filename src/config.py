@@ -71,7 +71,8 @@ TEST_START_DATE = "2026-03-01"
 SMOKE_MIN_PM25 = 35
 
 # Regularisation strengths compared on the dev set, which are large because the penalty is divided by 2m
-LINEAR_LAMBDAS = [0, 1, 10, 100, 1000, 10000]
+# Zero is left out because the one-hot groups and the bias are redundant, so it has no unique solution
+LINEAR_LAMBDAS = [1, 10, 100, 1000, 10000]
 
 # Batch gradient descent settings, where the learning rate must stay below about 0.1 to converge
 LINEAR_LEARNING_RATE = 0.05
