@@ -23,6 +23,7 @@ FEATURES_LOG_PATH = ROOT_DIR / "data" / "logs" / "build_features.log"
 RUNS_DIR = ROOT_DIR / "runs"
 PERSISTENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_persistence.log"
 LINEAR_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_linear.log"
+PLOT_LOG_PATH = ROOT_DIR / "data" / "logs" / "plot_history.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
