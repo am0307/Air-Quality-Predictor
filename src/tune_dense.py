@@ -5,7 +5,7 @@ import time
 import pandas as pd
 import torch
 from config import (
-    RANDOM_SEED, SEARCH_BATCH_OPTIONS, SEARCH_EPOCHS, SEARCH_LAMBDA_RANGE, SEARCH_LAYER_OPTIONS,
+    DENSE_SETTINGS, RANDOM_SEED, SEARCH_BATCH_OPTIONS, SEARCH_EPOCHS, SEARCH_LAMBDA_RANGE, SEARCH_LAYER_OPTIONS,
     SEARCH_LEARNING_RATE_RANGE, SEARCH_LOG_PATH, SEARCH_SEED, SEARCH_TRIALS, SEARCH_UNIT_OPTIONS,
 )
 from evaluation import create_run_dir, load_split, save_results
@@ -37,6 +37,7 @@ def sample_settings(generator):
     return {
         "hidden_units": sample_hidden_units(generator),
         "learning_rate": sample_log_scale(generator, SEARCH_LEARNING_RATE_RANGE),
+        "decay_rate": DENSE_SETTINGS["decay_rate"], # Not searched
         "batch_size": generator.choice(SEARCH_BATCH_OPTIONS),
         "epochs": SEARCH_EPOCHS,
         "lambda": sample_log_scale(generator, SEARCH_LAMBDA_RANGE),
@@ -50,7 +51,7 @@ def run_trial(trial, settings, splits, history_dir):
     torch.manual_seed(RANDOM_SEED)
     start_time = time.time()
 
-    model, history, best_costs = train_model(settings, x_train, y_train, x_dev, y_dev)
+    model, history = train_model(settings, x_train, y_train, x_dev, y_dev)
     pd.DataFrame(history).to_csv(history_dir / f"trial_{trial}.csv", index=False)
 
     train_errors = evaluate_model(model, x_train, train_rows)
@@ -60,10 +61,10 @@ def run_trial(trial, settings, splits, history_dir):
         "trial": trial,
         "hidden_units": "-".join(str(units) for units in settings["hidden_units"]),
         "learning_rate": settings["learning_rate"],
+        "decay_rate": settings["decay_rate"],
         "lambda": settings["lambda"],
         "batch_size": settings["batch_size"],
         "seed": RANDOM_SEED,
-        "best_epoch": best_costs["epoch"],
         "train_rmse": train_errors["all_hours"]["rmse"],
         "dev_rmse": dev_errors["all_hours"]["rmse"],
         "dev_smoke_rmse": dev_errors["smoke_hours"]["rmse"],

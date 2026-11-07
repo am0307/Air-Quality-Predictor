@@ -1,4 +1,3 @@
-import copy
 import logging
 import math
 import pandas as pd
@@ -57,14 +56,15 @@ def record_costs(model, settings, epoch, x_train, y_train, x_dev, y_dev):
         "dev_cost": dev_cost.item(),
     }
 
-# Trains with mini-batch gradient descent and Adam, keeping the weights from the epoch with the lowest dev cost
+# Trains with mini-batch gradient descent, Adam, and learning rate decay, keeping the final weights
 def train_model(settings, x_train, y_train, x_dev, y_dev):
     model = build_model(x_train.shape[1], settings["hidden_units"]).to(x_train.device)
     optimiser = torch.optim.Adam(model.parameters(), lr=settings["learning_rate"])
 
+    # The learning rate after each epoch is alpha = alpha_0 / (1 + decay_rate * epoch)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimiser, lambda epoch: 1 / (1 + settings["decay_rate"] * epoch))
+
     history = [record_costs(model, settings, 0, x_train, y_train, x_dev, y_dev)]
-    best_costs = history[0]
-    best_weights = copy.deepcopy(model.state_dict())
 
     for epoch in range(1, settings["epochs"] + 1):
 
@@ -79,6 +79,8 @@ def train_model(settings, x_train, y_train, x_dev, y_dev):
             cost.backward()
             optimiser.step()
 
+        scheduler.step()
+
         costs = record_costs(model, settings, epoch, x_train, y_train, x_dev, y_dev)
         history.append(costs)
 
@@ -86,16 +88,10 @@ def train_model(settings, x_train, y_train, x_dev, y_dev):
         if not math.isfinite(costs["regularised_cost"]):
             raise ValueError(f"Training diverged at epoch {epoch}")
 
-        if costs["dev_cost"] < best_costs["dev_cost"]:
-            best_costs = costs
-            best_weights = copy.deepcopy(model.state_dict())
-
         if epoch % 10 == 0:
             logger.info(f"Epoch {epoch}: train cost {costs['train_cost']:.4f}, dev cost {costs['dev_cost']:.4f}")
 
-    model.load_state_dict(best_weights)
-
-    return model, history, best_costs
+    return model, history
 
 def run_dense():
     setup_logging(DENSE_LOG_PATH)
@@ -110,18 +106,17 @@ def run_dense():
     x_train, y_train = create_tensors(train_rows, device)
     x_dev, y_dev = create_tensors(dev_rows, device)
 
-    model, history, best_costs = train_model(DENSE_SETTINGS, x_train, y_train, x_dev, y_dev)
-    logger.info(f"Best epoch: {best_costs['epoch']}, dev cost {best_costs['dev_cost']:.4f}")
+    model, history = train_model(DENSE_SETTINGS, x_train, y_train, x_dev, y_dev)
 
     results = {
         "model": "dense",
         "hidden_units": DENSE_SETTINGS["hidden_units"],
         "best_lambda": DENSE_SETTINGS["lambda"],
         "learning_rate": DENSE_SETTINGS["learning_rate"],
+        "decay_rate": DENSE_SETTINGS["decay_rate"],
         "batch_size": DENSE_SETTINGS["batch_size"],
         "epochs": DENSE_SETTINGS["epochs"],
         "seed": RANDOM_SEED,
-        "best_epoch": best_costs["epoch"],
         "train": evaluate_model(model, x_train, train_rows),
         "dev": evaluate_model(model, x_dev, dev_rows),
     }

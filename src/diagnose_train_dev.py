@@ -77,7 +77,7 @@ def run_diagnosis():
 
     for seed in DIAGNOSIS_SEEDS:
         torch.manual_seed(seed)
-        model, _, _ = train_dense(DENSE_SETTINGS, x_train, y_train, x_dev, y_dev)
+        model, _ = train_dense(DENSE_SETTINGS, x_train, y_train, x_dev, y_dev)
         results.extend(create_rows("dense", seed, model, splits))
 
     # Average over the seeds and put the splits in the order that they are compared
