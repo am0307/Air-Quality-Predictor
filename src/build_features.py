@@ -1,9 +1,11 @@
 import json
 import logging
+import numpy as np
 import pandas as pd
 from config import (
-    CLEAN_DATA_PATH, DEV_START_DATE, EMA_BETAS, FEATURES_DIR, FEATURES_LOG_PATH, MAX_FILL_HOURS,
-    NEARBY_LAG_HOURS, NORMALISATION_PATH, NUM_LAG_HOURS, SENSORS, TEST_START_DATE, TIMEZONE,
+    CLEAN_DATA_PATH, DEV_START_DATE, EMA_BETAS, FEATURES_DIR, FEATURES_LOG_PATH, LST_UTC_OFFSET_HOURS,
+    MAX_FILL_HOURS, NEARBY_LAG_HOURS, NORMALISATION_PATH, NUM_LAG_HOURS, SENSORS, TEST_START_DATE, TIMEZONE,
+    WEATHER_DATA_DIR, WIND_LAG_HOURS,
 )
 from log_setup import setup_logging
 
@@ -18,6 +20,44 @@ def load_hourly_table():
     all_hours = pd.date_range(table.index.min(), table.index.max(), freq="h")
 
     return table.reindex(all_hours)
+
+# Loads Pearson's hourly wind as u and v components, so that 350 and 10 degrees end up close together
+def load_wind_table():
+    paths = sorted(WEATHER_DATA_DIR.glob("*.csv"))
+
+    if not paths:
+        raise FileNotFoundError(f"No weather data found in {WEATHER_DATA_DIR}, run fetch_weather.py")
+
+    weather = pd.concat([pd.read_csv(path, encoding="utf-8-sig") for path in paths], ignore_index=True)
+    times = pd.to_datetime(weather["Date/Time (LST)"]) + pd.Timedelta(hours=LST_UTC_OFFSET_HOURS)
+
+    speed = pd.to_numeric(weather["Wind Spd (km/h)"], errors="coerce")
+    direction = np.radians(pd.to_numeric(weather["Wind Dir (10s deg)"], errors="coerce") * 10)
+
+    # Calm hours have no direction, but both components are zero either way
+    wind = pd.DataFrame({
+        "u": (speed * np.sin(direction)).mask(speed == 0, 0),
+        "v": (speed * np.cos(direction)).mask(speed == 0, 0),
+    })
+    wind.index = pd.DatetimeIndex(times).tz_localize("UTC")
+
+    return wind.sort_index().asfreq("h").ffill(limit=MAX_FILL_HOURS)
+
+# Adds wind from the last WIND_LAG_HOURS hours, which is the same for every station
+def add_wind_features(rows, wind):
+    rows = rows.copy()
+    is_missing = np.zeros(len(rows), dtype=bool)
+
+    for hours_ago in range(1, WIND_LAG_HOURS + 1):
+        lagged = wind.shift(hours_ago).reindex(rows.index)
+
+        for name in ("u", "v"):
+            rows[f"wind_{name}_{hours_ago}"] = lagged[name].to_numpy()
+            is_missing = is_missing | lagged[name].isna().to_numpy()
+
+    rows["wind_missing"] = is_missing.astype(int)
+
+    return rows
 
 # Creates one row per hour to predict, where every input comes from an earlier hour
 def build_station_features(table, station):
@@ -82,7 +122,7 @@ def split_rows(rows):
 
 # Normalises every split using only the training set's mean and standard deviation
 def normalise_features(train, dev, test):
-    columns = [c for c in train.columns if c.startswith(("pm25_lag_", "ema_", "nearby_lag_"))]
+    columns = [c for c in train.columns if c.startswith(("pm25_lag_", "ema_", "nearby_lag_", "wind_u_", "wind_v_"))]
 
     means = train[columns].mean()
     stds = train[columns].std()
@@ -91,7 +131,7 @@ def normalise_features(train, dev, test):
     for split in splits:
         split[columns] = (split[columns] - means) / stds
 
-        # A missing nearby reading becomes the training mean, and its missing column tells the model
+        # A missing nearby or wind reading becomes the training mean, and its missing column tells the model
         split[columns] = split[columns].fillna(0)
 
     values = {"means": means.to_dict(), "stds": stds.to_dict()}
@@ -131,6 +171,7 @@ def run_build_features():
         station_rows.append(rows)
 
     rows = pd.concat(station_rows).rename_axis("datetime_utc").sort_index()
+    rows = add_wind_features(rows, load_wind_table())
 
     train, dev, test, normalisation_values = normalise_features(*split_rows(rows))
     check_features(train, dev, test)
