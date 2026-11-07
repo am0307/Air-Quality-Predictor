@@ -24,6 +24,7 @@ RUNS_DIR = ROOT_DIR / "runs"
 PERSISTENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_persistence.log"
 LINEAR_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_linear.log"
 PLOT_LOG_PATH = ROOT_DIR / "data" / "logs" / "plot_history.log"
+DENSE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_dense.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
@@ -81,3 +82,13 @@ LINEAR_ITERATIONS = 10000
 
 # Iterations between saved costs
 COST_RECORD_INTERVAL = 100
+
+# Seed for weight initialisation and shuffling, so that a run can be repeated
+RANDOM_SEED = 1
+
+# Dense network starting point, to be tuned on the dev set
+DENSE_HIDDEN_UNITS = [64, 32] # Units in each hidden layer
+DENSE_LEARNING_RATE = 0.0003 # Below Adam's usual 0.001, which made the dev cost bounce more
+DENSE_BATCH_SIZE = 1024
+DENSE_EPOCHS = 100
+DENSE_LAMBDA = 1000 # The best of those tried, as the network otherwise starts to overfit

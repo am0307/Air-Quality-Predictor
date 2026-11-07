@@ -56,7 +56,10 @@ def plot_costs(axis, history, title):
 # Plots one panel per lambda on a shared axis, so that the panels can be compared directly
 def plot_run(history, best_lambda, run_name):
     lambdas = history["lambda"].unique()
-    figure, axes = plt.subplots(1, len(lambdas), figsize=(3 * len(lambdas), 3.8), sharey=True, squeeze=False)
+
+    # A run with one panel still needs enough width for the title and legend
+    figure_width = max(3 * len(lambdas), 8)
+    figure, axes = plt.subplots(1, len(lambdas), figsize=(figure_width, 3.8), sharey=True, squeeze=False)
     figure.set_facecolor(BACKGROUND_COLOUR)
 
     for axis, lambd in zip(axes[0], lambdas):
