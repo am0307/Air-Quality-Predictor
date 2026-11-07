@@ -6,23 +6,11 @@ from torch import nn
 from config import (
     COST_RECORD_INTERVAL, LINEAR_ITERATIONS, LINEAR_LAMBDAS, LINEAR_LEARNING_RATE, LINEAR_LOG_PATH,
 )
-from evaluation import create_run_dir, evaluate_predictions, load_split, save_results
+from evaluation import create_run_dir, load_split, save_results
 from log_setup import setup_logging
+from training import calculate_cost, create_tensors, evaluate_model
 
 logger = logging.getLogger(__name__)
-
-# Separates a split into input and target tensors
-def create_tensors(rows, device):
-    inputs = rows.drop(columns=["station", "target"]).to_numpy(dtype="float32")
-    targets = rows["target"].to_numpy(dtype="float32")
-
-    return torch.tensor(inputs, device=device), torch.tensor(targets, device=device)
-
-# Squared error cost, J = 1/(2m) * sum((prediction - target)^2)
-def calculate_cost(model, inputs, targets):
-    predictions = model(inputs).squeeze(1)
-
-    return ((predictions - targets) ** 2).mean() / 2
 
 # The L2 penalty, lambda/(2m) * sum(w^2), which leaves the bias out as in the course
 def calculate_penalty(model, lambd, m):
@@ -67,13 +55,6 @@ def train_model(lambd, x_train, y_train, x_dev, y_dev):
         raise ValueError(f"Gradient descent diverged with lambda {lambd}")
 
     return model, history
-
-# Evaluates a trained model in µg/m³
-def evaluate_model(model, inputs, rows):
-    with torch.no_grad():
-        predictions = model(inputs).squeeze(1).cpu().numpy()
-
-    return evaluate_predictions(pd.Series(predictions, index=rows.index), rows["target"])
 
 def run_linear():
     setup_logging(LINEAR_LOG_PATH)
