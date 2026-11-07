@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 from config import (
     CLEAN_DATA_PATH, DEV_START_DATE, EMA_BETAS, FEATURES_DIR, FEATURES_LOG_PATH, MAX_FILL_HOURS,
-    NORMALISATION_PATH, NUM_LAG_HOURS, SENSORS, TEST_START_DATE, TIMEZONE,
+    NEARBY_LAG_HOURS, NORMALISATION_PATH, NUM_LAG_HOURS, SENSORS, TEST_START_DATE, TIMEZONE,
 )
 from log_setup import setup_logging
 
@@ -20,10 +20,12 @@ def load_hourly_table():
     return table.reindex(all_hours)
 
 # Creates one row per hour to predict, where every input comes from an earlier hour
-def build_station_features(readings, station):
+def build_station_features(table, station):
+    readings = table[station]
 
     # Only the inputs are filled in, so the model is never scored against a made-up reading
-    filled = readings.ffill(limit=MAX_FILL_HOURS)
+    all_filled = table.ffill(limit=MAX_FILL_HOURS)
+    filled = all_filled[station]
     features = {"target": readings}
 
     # Readings from the last NUM_LAG_HOURS hours
@@ -33,6 +35,18 @@ def build_station_features(readings, station):
     # Bias-corrected exponentially weighted averages, up to and including the previous hour
     for beta in EMA_BETAS:
         features[f"ema_{beta}"] = filled.ewm(alpha=1 - beta, adjust=True).mean().shift(1)
+
+    # Each station keeps its own columns, and a row's own station counts as missing since its lags are above
+    for name in SENSORS:
+        nearby = all_filled[name] if name != station else pd.Series(float("nan"), index=readings.index)
+        is_missing = pd.Series(False, index=readings.index)
+
+        for hours_ago in range(1, NEARBY_LAG_HOURS + 1):
+            lag = nearby.shift(hours_ago)
+            features[f"nearby_lag_{name}_{hours_ago}"] = lag
+            is_missing = is_missing | lag.isna()
+
+        features[f"nearby_missing_{name}"] = is_missing.astype(int)
 
     # One-hot hour of day and day of week in local time
     local_times = readings.index.tz_convert(TIMEZONE)
@@ -50,8 +64,10 @@ def build_station_features(readings, station):
     rows = pd.DataFrame(features, index=readings.index)
     rows.insert(0, "station", station)
 
-    # Hours without a real target or a full set of inputs cannot be used
-    return rows.dropna()
+    # Hours without a real target or a station's own inputs cannot be used, but another station's gap is allowed
+    required = [c for c in rows.columns if not c.startswith("nearby_lag_")]
+
+    return rows.dropna(subset=required)
 
 # Splits rows by the hour being predicted
 def split_rows(rows):
@@ -66,7 +82,7 @@ def split_rows(rows):
 
 # Normalises every split using only the training set's mean and standard deviation
 def normalise_features(train, dev, test):
-    columns = [c for c in train.columns if c.startswith(("pm25_lag_", "ema_"))]
+    columns = [c for c in train.columns if c.startswith(("pm25_lag_", "ema_", "nearby_lag_"))]
 
     means = train[columns].mean()
     stds = train[columns].std()
@@ -74,6 +90,9 @@ def normalise_features(train, dev, test):
     splits = [split.copy() for split in (train, dev, test)]
     for split in splits:
         split[columns] = (split[columns] - means) / stds
+
+        # A missing nearby reading becomes the training mean, and its missing column tells the model
+        split[columns] = split[columns].fillna(0)
 
     values = {"means": means.to_dict(), "stds": stds.to_dict()}
 
@@ -106,7 +125,7 @@ def run_build_features():
     # Stack each station's rows into one table
     station_rows = []
     for station in SENSORS:
-        rows = build_station_features(table[station], station)
+        rows = build_station_features(table, station)
         real_hours = table[station].notna().sum()
         logger.info(f"{station}: usable rows {len(rows)} of {real_hours} cleaned readings")
         station_rows.append(rows)

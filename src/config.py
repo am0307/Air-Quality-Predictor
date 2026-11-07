@@ -61,6 +61,9 @@ SPIKE_MIN_OTHER_STATIONS = 2 # Stations that must be reporting to make a fair co
 # Hours of past readings given to the model
 NUM_LAG_HOURS = 24
 
+# Hours of past readings given to the model from each of the other stations
+NEARBY_LAG_HOURS = 3
+
 # Longest stretch of missing hours filled in with the last known reading
 MAX_FILL_HOURS = 3
 
