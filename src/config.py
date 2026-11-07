@@ -26,6 +26,7 @@ LINEAR_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_linear.log"
 PLOT_LOG_PATH = ROOT_DIR / "data" / "logs" / "plot_history.log"
 DENSE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_dense.log"
 DIAGNOSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "diagnose_train_dev.log"
+ANALYSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "analyse_errors.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
@@ -105,3 +106,12 @@ DIAGNOSIS_SEEDS = [1, 2, 3]
 
 # The lambda chosen by the linear baseline
 DIAGNOSIS_LINEAR_LAMBDA = 1
+
+# Reading levels (µg/m³) used to group errors in the error analysis
+ERROR_LEVEL_EDGES = [0, 5, 10, 20, 35, 50, 100, 1000]
+
+# A station has an onset when it rises this much in one hour (µg/m³)
+ONSET_MIN_RISE = 10
+
+# Another station gives early warning of an onset if it rose this much in the hour before (µg/m³)
+EARLY_WARNING_MIN_RISE = 5
