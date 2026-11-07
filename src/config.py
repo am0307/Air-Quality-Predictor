@@ -25,6 +25,7 @@ PERSISTENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_persistence.log"
 LINEAR_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_linear.log"
 PLOT_LOG_PATH = ROOT_DIR / "data" / "logs" / "plot_history.log"
 DENSE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_dense.log"
+DIAGNOSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "diagnose_train_dev.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
@@ -92,3 +93,15 @@ DENSE_LEARNING_RATE = 0.0003 # Below Adam's usual 0.001, which made the dev cost
 DENSE_BATCH_SIZE = 1024
 DENSE_EPOCHS = 100
 DENSE_LAMBDA = 1000 # The best of those tried, as the network otherwise starts to overfit
+
+# Whole weeks of training rows held out as the train-dev set, as neighbouring hours are too alike to sample randomly
+TRAIN_DEV_WEEK_INTERVAL = 10 # Every 10th week, which is about 10% of the rows
+TRAIN_DEV_WEEK_OFFSET = 4 # Holds out smoke from several months, while keeping June 2025 for training
+TRAIN_DEV_GAP_HOURS = 24 # Training rows this close to a held-out week would share its lag values
+TRAIN_DEV_MIN_SMOKE_ROWS = 50 # Fewer than this would make the smoke results meaningless
+
+# Seeds for the diagnosis, since one dense network can be lucky or unlucky
+DIAGNOSIS_SEEDS = [1, 2, 3]
+
+# The lambda chosen by the linear baseline
+DIAGNOSIS_LINEAR_LAMBDA = 1
