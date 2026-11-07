@@ -8,6 +8,10 @@ ENV_PATH = ROOT_DIR / ".env"
 RAW_DATA_DIR = ROOT_DIR / "data" / "raw"
 FETCH_LOG_PATH = ROOT_DIR / "data" / "logs" / "fetch_data.log"
 
+# Locations of the downloaded weather data and its download log
+WEATHER_DATA_DIR = RAW_DATA_DIR / "weather"
+WEATHER_LOG_PATH = ROOT_DIR / "data" / "logs" / "fetch_weather.log"
+
 # Locations of the cleaned data, removed rows, cleaning report, and cleaning log
 CLEAN_DATA_PATH = ROOT_DIR / "data" / "clean" / "pm25_hourly.csv"
 REMOVED_ROWS_PATH = ROOT_DIR / "data" / "clean" / "removed_rows.csv"
@@ -64,6 +68,21 @@ NUM_LAG_HOURS = 24
 
 # Hours of past readings given to the model from each of the other stations
 NEARBY_LAG_HOURS = 3
+
+# Environment Canada station ID for Toronto Pearson (TORONTO INTL A), which provides the hourly wind
+WEATHER_STATION_ID = 51459
+
+# First month of weather downloaded, a month before CLEAN_START_DATE so that the first rows have past wind
+WEATHER_START_MONTH = "2023-04"
+
+# The archive lags by about a day, so a month counts as complete once downloaded this many days after it ends
+WEATHER_ARCHIVE_DELAY_DAYS = 2
+
+# Weather times are in local standard time, which is UTC-5 all year as it ignores daylight saving
+LST_UTC_OFFSET_HOURS = 5
+
+# Hours of past wind given to the model
+WIND_LAG_HOURS = 3
 
 # Longest stretch of missing hours filled in with the last known reading
 MAX_FILL_HOURS = 3
