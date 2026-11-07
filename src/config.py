@@ -25,6 +25,7 @@ PERSISTENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_persistence.log"
 LINEAR_LOG_PATH = ROOT_DIR / "data" / "logs" / "baseline_linear.log"
 PLOT_LOG_PATH = ROOT_DIR / "data" / "logs" / "plot_history.log"
 DENSE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_dense.log"
+SEARCH_LOG_PATH = ROOT_DIR / "data" / "logs" / "tune_dense.log"
 DIAGNOSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "diagnose_train_dev.log"
 ANALYSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "analyse_errors.log"
 
@@ -92,11 +93,27 @@ COST_RECORD_INTERVAL = 100
 RANDOM_SEED = 1
 
 # Dense network starting point, to be tuned on the dev set
-DENSE_HIDDEN_UNITS = [64, 32] # Units in each hidden layer
-DENSE_LEARNING_RATE = 0.0003 # Below Adam's usual 0.001, which made the dev cost bounce more
-DENSE_BATCH_SIZE = 1024
-DENSE_EPOCHS = 100
-DENSE_LAMBDA = 1000 # The best of those tried, as the network otherwise starts to overfit
+DENSE_SETTINGS = {
+    "hidden_units": [64, 32], # Units in each hidden layer
+    "learning_rate": 0.0003, # Below Adam's usual 0.001, which made the dev cost bounce more
+    "batch_size": 1024,
+    "epochs": 100,
+    "lambda": 1000, # The best of those tried, as the network otherwise starts to overfit
+}
+
+# Random search over the dense network's settings, with a fixed seed so the same trials can be repeated
+SEARCH_SEED = 1
+SEARCH_TRIALS = 30
+SEARCH_EPOCHS = 200
+
+# These are sampled on a log scale, so that each power of 10 gets the same share of trials
+SEARCH_LEARNING_RATE_RANGE = (0.0001, 0.003)
+SEARCH_LAMBDA_RANGE = (1, 10000)
+
+# These are sampled uniformly
+SEARCH_LAYER_OPTIONS = [1, 2, 3]
+SEARCH_UNIT_OPTIONS = [32, 64, 128, 256]
+SEARCH_BATCH_OPTIONS = [256, 512, 1024, 2048]
 
 # Whole weeks of training rows held out as the train-dev set, as neighbouring hours are too alike to sample randomly
 TRAIN_DEV_WEEK_INTERVAL = 10 # Every 10th week, which is about 10% of the rows

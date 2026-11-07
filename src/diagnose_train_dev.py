@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 from baseline_linear import train_model as train_linear
 from config import (
-    DENSE_LAMBDA, DIAGNOSIS_LINEAR_LAMBDA, DIAGNOSIS_LOG_PATH, DIAGNOSIS_SEEDS, RANDOM_SEED, SMOKE_MIN_PM25,
+    DENSE_SETTINGS, DIAGNOSIS_LINEAR_LAMBDA, DIAGNOSIS_LOG_PATH, DIAGNOSIS_SEEDS, RANDOM_SEED, SMOKE_MIN_PM25,
     TRAIN_DEV_GAP_HOURS, TRAIN_DEV_MIN_SMOKE_ROWS, TRAIN_DEV_WEEK_INTERVAL, TRAIN_DEV_WEEK_OFFSET,
 )
 from evaluation import create_run_dir, load_split, save_results
@@ -77,7 +77,7 @@ def run_diagnosis():
 
     for seed in DIAGNOSIS_SEEDS:
         torch.manual_seed(seed)
-        model, _, _ = train_dense(DENSE_LAMBDA, x_train, y_train, x_dev, y_dev)
+        model, _, _ = train_dense(DENSE_SETTINGS, x_train, y_train, x_dev, y_dev)
         results.extend(create_rows("dense", seed, model, splits))
 
     # Average over the seeds and put the splits in the order that they are compared

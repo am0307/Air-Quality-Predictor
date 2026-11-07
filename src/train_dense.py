@@ -4,10 +4,7 @@ import math
 import pandas as pd
 import torch
 from torch import nn
-from config import (
-    DENSE_BATCH_SIZE, DENSE_EPOCHS, DENSE_HIDDEN_UNITS, DENSE_LAMBDA, DENSE_LEARNING_RATE, DENSE_LOG_PATH,
-    RANDOM_SEED,
-)
+from config import DENSE_LOG_PATH, DENSE_SETTINGS, RANDOM_SEED
 from evaluation import create_run_dir, load_split, save_results
 from log_setup import setup_logging
 from training import calculate_cost, create_tensors, evaluate_model
@@ -23,10 +20,10 @@ def create_layer(num_inputs, num_units):
     return layer
 
 # Builds ReLU hidden layers and one output unit, which has no activation so it can predict any value
-def build_model(num_inputs):
+def build_model(num_inputs, hidden_units):
     layers = []
 
-    for num_units in DENSE_HIDDEN_UNITS:
+    for num_units in hidden_units:
         layers.append(create_layer(num_inputs, num_units))
         layers.append(nn.ReLU())
         num_inputs = num_units
@@ -42,17 +39,17 @@ def calculate_penalty(model, lambd, m):
     return lambd / (2 * m) * total
 
 # Records the costs after one epoch, where train and dev costs leave out the penalty so they can be compared
-def record_costs(model, lambd, epoch, x_train, y_train, x_dev, y_dev):
+def record_costs(model, settings, epoch, x_train, y_train, x_dev, y_dev):
     with torch.no_grad():
         train_cost = calculate_cost(model, x_train, y_train)
         dev_cost = calculate_cost(model, x_dev, y_dev)
-        penalty = calculate_penalty(model, lambd, len(y_train))
+        penalty = calculate_penalty(model, settings["lambda"], len(y_train))
 
     # Each epoch takes one gradient step per mini-batch
-    batches_per_epoch = math.ceil(len(y_train) / DENSE_BATCH_SIZE)
+    batches_per_epoch = math.ceil(len(y_train) / settings["batch_size"])
 
     return {
-        "lambda": lambd,
+        "lambda": settings["lambda"],
         "epoch": epoch,
         "iteration": epoch * batches_per_epoch,
         "regularised_cost": (train_cost + penalty).item(),
@@ -61,28 +58,28 @@ def record_costs(model, lambd, epoch, x_train, y_train, x_dev, y_dev):
     }
 
 # Trains with mini-batch gradient descent and Adam, keeping the weights from the epoch with the lowest dev cost
-def train_model(lambd, x_train, y_train, x_dev, y_dev):
-    model = build_model(x_train.shape[1]).to(x_train.device)
-    optimiser = torch.optim.Adam(model.parameters(), lr=DENSE_LEARNING_RATE)
+def train_model(settings, x_train, y_train, x_dev, y_dev):
+    model = build_model(x_train.shape[1], settings["hidden_units"]).to(x_train.device)
+    optimiser = torch.optim.Adam(model.parameters(), lr=settings["learning_rate"])
 
-    history = [record_costs(model, lambd, 0, x_train, y_train, x_dev, y_dev)]
+    history = [record_costs(model, settings, 0, x_train, y_train, x_dev, y_dev)]
     best_costs = history[0]
     best_weights = copy.deepcopy(model.state_dict())
 
-    for epoch in range(1, DENSE_EPOCHS + 1):
+    for epoch in range(1, settings["epochs"] + 1):
 
         # Every row carries its own past readings, so rows can be shuffled without mixing up time
         shuffled = torch.randperm(len(y_train), device=x_train.device)
 
-        for batch in torch.split(shuffled, DENSE_BATCH_SIZE):
+        for batch in torch.split(shuffled, settings["batch_size"]):
             cost = calculate_cost(model, x_train[batch], y_train[batch])
-            cost = cost + calculate_penalty(model, lambd, len(y_train))
+            cost = cost + calculate_penalty(model, settings["lambda"], len(y_train))
 
             optimiser.zero_grad()
             cost.backward()
             optimiser.step()
 
-        costs = record_costs(model, lambd, epoch, x_train, y_train, x_dev, y_dev)
+        costs = record_costs(model, settings, epoch, x_train, y_train, x_dev, y_dev)
         history.append(costs)
 
         # A learning rate that is too high makes the costs blow up instead of falling
@@ -113,16 +110,16 @@ def run_dense():
     x_train, y_train = create_tensors(train_rows, device)
     x_dev, y_dev = create_tensors(dev_rows, device)
 
-    model, history, best_costs = train_model(DENSE_LAMBDA, x_train, y_train, x_dev, y_dev)
+    model, history, best_costs = train_model(DENSE_SETTINGS, x_train, y_train, x_dev, y_dev)
     logger.info(f"Best epoch: {best_costs['epoch']}, dev cost {best_costs['dev_cost']:.4f}")
 
     results = {
         "model": "dense",
-        "hidden_units": DENSE_HIDDEN_UNITS,
-        "best_lambda": DENSE_LAMBDA,
-        "learning_rate": DENSE_LEARNING_RATE,
-        "batch_size": DENSE_BATCH_SIZE,
-        "epochs": DENSE_EPOCHS,
+        "hidden_units": DENSE_SETTINGS["hidden_units"],
+        "best_lambda": DENSE_SETTINGS["lambda"],
+        "learning_rate": DENSE_SETTINGS["learning_rate"],
+        "batch_size": DENSE_SETTINGS["batch_size"],
+        "epochs": DENSE_SETTINGS["epochs"],
         "seed": RANDOM_SEED,
         "best_epoch": best_costs["epoch"],
         "train": evaluate_model(model, x_train, train_rows),

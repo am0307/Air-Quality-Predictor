@@ -25,7 +25,11 @@ def load_latest_dense_model(num_inputs, device):
     model_path = max(model_paths, key=lambda path: path.stat().st_mtime)
     logger.info(f"Analysing {model_path.parent.name}")
 
-    model = build_model(num_inputs).to(device)
+    # The network must be rebuilt with the same layers that the run was trained with
+    with open(model_path.parent / "results.json", encoding="utf-8") as f:
+        hidden_units = json.load(f)["hidden_units"]
+
+    model = build_model(num_inputs, hidden_units).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
 
     return model
