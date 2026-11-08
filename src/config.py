@@ -36,6 +36,7 @@ SEQUENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_sequence.log"
 COMPARISON_LOG_PATH = ROOT_DIR / "data" / "logs" / "compare_dense_gru_lstm.log"
 FINAL_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_final.log"
 TEST_LOG_PATH = ROOT_DIR / "data" / "logs" / "evaluate_test.log"
+PREDICT_LOG_PATH = ROOT_DIR / "data" / "logs" / "predict.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
@@ -87,6 +88,17 @@ LST_UTC_OFFSET_HOURS = 5
 
 # Hours of past wind given to the model
 WIND_LAG_HOURS = 3
+
+# Environment Canada's real-time observations for Pearson, which appear about a minute after each hour
+LIVE_WEATHER_URL = "https://api.weather.gc.ca/collections/swob-realtime/items"
+LIVE_WEATHER_STATION_ID = "6158731" # Pearson's climate ID, which the real-time data uses
+LIVE_WEATHER_HOURS = 12 # Hours of live wind retrieved, enough for the lags plus filling short gaps
+
+# Days of recent readings retrieved for a live prediction, where the slower average gives older readings under 1% weight
+LIVE_LOOKBACK_DAYS = 10
+
+# A warning is given if the newest reading ended longer ago than this
+LIVE_MAX_DATA_AGE_HOURS = 3
 
 # Longest stretch of missing hours filled in with the last known reading
 MAX_FILL_HOURS = 3
