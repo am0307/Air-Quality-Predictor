@@ -32,6 +32,8 @@ DENSE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_dense.log"
 SEARCH_LOG_PATH = ROOT_DIR / "data" / "logs" / "tune_dense.log"
 DIAGNOSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "diagnose_train_dev.log"
 ANALYSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "analyse_errors.log"
+SEQUENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_sequence.log"
+COMPARISON_LOG_PATH = ROOT_DIR / "data" / "logs" / "compare_dense_gru_lstm.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
@@ -155,3 +157,22 @@ ONSET_MIN_RISE = 10
 
 # Another station gives early warning of an onset if it rose this much in the hour before (µg/m³)
 EARLY_WARNING_MIN_RISE = 5
+
+# GRU or LSTM settings, which train the same way as the dense network apart from gradient clipping
+SEQUENCE_SETTINGS = {
+    **DENSE_SETTINGS,
+    "cell": "gru", # "gru" or "lstm"
+    "hidden_size": 64, # Chosen on the train-dev weeks by compare_dense_gru_lstm.py
+    "head_units": 64, # Units in the dense layer after the sequence
+    "max_gradient_norm": 10,
+}
+
+# Options compared on the train-dev weeks before the single comparison on dev
+COMPARISON_CELLS = ["gru", "lstm"]
+COMPARISON_HIDDEN_SIZES = [16, 32, 64]
+COMPARISON_SELECTION_SEEDS = [1, 2, 3]
+COMPARISON_DEV_SEEDS = [1, 2, 3, 11, 12, 13]
+
+# A sequence model replaces dense only if its mean dev RMSE is this much lower, with at least this many seeds better
+COMPARISON_MIN_IMPROVEMENT = 0.01
+COMPARISON_MIN_SEEDS_BETTER = 5
