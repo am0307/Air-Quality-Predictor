@@ -11,17 +11,36 @@ from log_setup import setup_logging
 
 logger = logging.getLogger(__name__)
 
-# Loads the cleaned data into a table with one row per hour and one column per station
-def load_hourly_table():
-    clean = pd.read_csv(CLEAN_DATA_PATH)
-    clean["datetime_utc"] = pd.to_datetime(clean["datetime_utc"], utc=True)
+# Turns cleaned readings into a table with one row per hour and one column per station
+def create_hourly_table(clean):
     table = clean.pivot(index="datetime_utc", columns="station", values="pm25")
+    table = table.reindex(columns=list(SENSORS)) # A station with no readings still gets an empty column
 
     all_hours = pd.date_range(table.index.min(), table.index.max(), freq="h")
 
     return table.reindex(all_hours)
 
-# Loads Pearson's hourly wind as u and v components, so that 350 and 10 degrees end up close together
+# Loads the cleaned data into a table with one row per hour and one column per station
+def load_hourly_table():
+    clean = pd.read_csv(CLEAN_DATA_PATH)
+    clean["datetime_utc"] = pd.to_datetime(clean["datetime_utc"], utc=True)
+
+    return create_hourly_table(clean)
+
+# Turns hourly wind into u and v components, so that 350 and 10 degrees end up close together
+def create_wind_table(times_utc, speed, direction_tens):
+    direction = np.radians(direction_tens * 10)
+
+    # Calm hours have no direction, but both components are zero either way
+    wind = pd.DataFrame({
+        "u": (speed * np.sin(direction)).mask(speed == 0, 0),
+        "v": (speed * np.cos(direction)).mask(speed == 0, 0),
+    })
+    wind.index = pd.DatetimeIndex(times_utc)
+
+    return wind.sort_index().asfreq("h").ffill(limit=MAX_FILL_HOURS)
+
+# Loads Pearson's hourly wind from the downloaded archive
 def load_wind_table():
     paths = sorted(WEATHER_DATA_DIR.glob("*.csv"))
 
@@ -32,16 +51,9 @@ def load_wind_table():
     times = pd.to_datetime(weather["Date/Time (LST)"]) + pd.Timedelta(hours=LST_UTC_OFFSET_HOURS)
 
     speed = pd.to_numeric(weather["Wind Spd (km/h)"], errors="coerce")
-    direction = np.radians(pd.to_numeric(weather["Wind Dir (10s deg)"], errors="coerce") * 10)
+    direction_tens = pd.to_numeric(weather["Wind Dir (10s deg)"], errors="coerce")
 
-    # Calm hours have no direction, but both components are zero either way
-    wind = pd.DataFrame({
-        "u": (speed * np.sin(direction)).mask(speed == 0, 0),
-        "v": (speed * np.cos(direction)).mask(speed == 0, 0),
-    })
-    wind.index = pd.DatetimeIndex(times).tz_localize("UTC")
-
-    return wind.sort_index().asfreq("h").ffill(limit=MAX_FILL_HOURS)
+    return create_wind_table(times.dt.tz_localize("UTC"), speed, direction_tens)
 
 # Adds wind from the last WIND_LAG_HOURS hours, which is the same for every station
 def add_wind_features(rows, wind):
@@ -49,7 +61,9 @@ def add_wind_features(rows, wind):
     is_missing = np.zeros(len(rows), dtype=bool)
 
     for hours_ago in range(1, WIND_LAG_HOURS + 1):
-        lagged = wind.shift(hours_ago).reindex(rows.index)
+
+        # Shifting by time rather than by position still works when the newest hours have no wind yet
+        lagged = wind.shift(freq=pd.Timedelta(hours=hours_ago)).reindex(rows.index)
 
         for name in ("u", "v"):
             rows[f"wind_{name}_{hours_ago}"] = lagged[name].to_numpy()
@@ -60,7 +74,7 @@ def add_wind_features(rows, wind):
     return rows
 
 # Creates one row per hour to predict, where every input comes from an earlier hour
-def build_station_features(table, station):
+def build_station_features(table, station, keep_unlabelled=False):
     readings = table[station]
 
     # Only the inputs are filled in, so the model is never scored against a made-up reading
@@ -107,6 +121,10 @@ def build_station_features(table, station):
     # Hours without a real target or a station's own inputs cannot be used, but another station's gap is allowed
     required = [c for c in rows.columns if not c.startswith("nearby_lag_")]
 
+    # A live prediction is for an hour whose reading does not exist yet
+    if keep_unlabelled:
+        required.remove("target")
+
     return rows.dropna(subset=required)
 
 # Splits rows by the hour being predicted
@@ -120,23 +138,26 @@ def split_rows(rows):
 
     return train, dev, test
 
+# Normalises rows with saved means and standard deviations, which always come from the training set
+def apply_normalisation(rows, values):
+    means = pd.Series(values["means"])
+    stds = pd.Series(values["stds"])
+    columns = list(means.index)
+
+    rows = rows.copy()
+    rows[columns] = (rows[columns] - means) / stds
+
+    # A missing nearby or wind reading becomes the training mean, and its missing column tells the model
+    rows[columns] = rows[columns].fillna(0)
+
+    return rows
+
 # Normalises every split using only the training set's mean and standard deviation
 def normalise_features(train, dev, test):
     columns = [c for c in train.columns if c.startswith(("pm25_lag_", "ema_", "nearby_lag_", "wind_u_", "wind_v_"))]
+    values = {"means": train[columns].mean().to_dict(), "stds": train[columns].std().to_dict()}
 
-    means = train[columns].mean()
-    stds = train[columns].std()
-
-    splits = [split.copy() for split in (train, dev, test)]
-    for split in splits:
-        split[columns] = (split[columns] - means) / stds
-
-        # A missing nearby or wind reading becomes the training mean, and its missing column tells the model
-        split[columns] = split[columns].fillna(0)
-
-    values = {"means": means.to_dict(), "stds": stds.to_dict()}
-
-    return *splits, values
+    return *(apply_normalisation(split, values) for split in (train, dev, test)), values
 
 # Stops the pipeline if the features break a rule that they should always meet
 def check_features(train, dev, test):

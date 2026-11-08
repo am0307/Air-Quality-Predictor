@@ -10,14 +10,11 @@ from log_setup import setup_logging
 
 logger = logging.getLogger(__name__)
 
-# Reads every raw file into one table with a row for each reading
-def load_raw_rows():
+# Turns saved API responses, each holding one station's rows, into one table with a row for each reading
+def create_rows_table(saved_responses):
     records = []
 
-    for path in sorted(RAW_DATA_DIR.glob("*.json")):
-        with open(path, encoding="utf-8") as f:
-            saved = json.load(f)
-
+    for saved in saved_responses:
         for row in saved["rows"]:
             records.append({
                 "station": saved["station"],
@@ -30,13 +27,26 @@ def load_raw_rows():
             })
 
     if not records:
-        raise FileNotFoundError(f"No raw data found in {RAW_DATA_DIR}, run fetch_data.py")
+        raise ValueError("There are no readings to clean")
 
     df = pd.DataFrame(records)
     df["datetime_utc"] = pd.to_datetime(df["datetime_utc"], utc=True)
     df["removal_reason"] = "" # Stays empty for rows that are kept
 
     return df
+
+# Reads every raw file into one table with a row for each reading
+def load_raw_rows():
+    saved_responses = []
+
+    for path in sorted(RAW_DATA_DIR.glob("*.json")):
+        with open(path, encoding="utf-8") as f:
+            saved_responses.append(json.load(f))
+
+    if not saved_responses:
+        raise FileNotFoundError(f"No raw data found in {RAW_DATA_DIR}, run fetch_data.py")
+
+    return create_rows_table(saved_responses)
 
 # Records why rows were removed, keeping the first reason if several rules apply
 def mark_removed(df, mask, reason):
@@ -91,8 +101,8 @@ def mark_spikes(df):
         mask = (df["station"] == station) & df["datetime_utc"].isin(spike_hours)
         mark_removed(df, mask, "single_station_spike")
 
-# Applies each cleaning rule in order
-def apply_cleaning_rules(df):
+# Applies each cleaning rule in order, where live data must skip the spike rule as it looks 3 hours ahead
+def apply_cleaning_rules(df, include_spikes=True):
     bad_format = (
         df["pm25"].isna()
         | (df["parameter"] != "pm25")
@@ -110,7 +120,9 @@ def apply_cleaning_rules(df):
     mark_removed(df, (df["pm25"] < PM25_MIN) | (df["pm25"] > PM25_MAX), "out_of_range")
 
     mark_stuck_readings(df)
-    mark_spikes(df)
+
+    if include_spikes:
+        mark_spikes(df)
 
 # Stops the pipeline if the cleaned data breaks a rule that it should always meet
 def check_clean_data(clean):

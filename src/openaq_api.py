@@ -32,11 +32,11 @@ def create_session():
     return session
 
 # Retrieves one page of hourly data, retrying if a temporary error occurs
-def get_page(session, sensor_id, year, page):
+def get_page(session, sensor_id, datetime_from, datetime_to, page):
     url = f"{BASE_URL}/sensors/{sensor_id}/hours"
     params = {
-        "datetime_from": f"{year}-01-01T00:00:00Z",
-        "datetime_to": f"{year + 1}-01-01T00:00:00Z",
+        "datetime_from": datetime_from,
+        "datetime_to": datetime_to,
         "limit": PAGE_LIMIT,
         "page": page,
     }
@@ -59,24 +59,28 @@ def get_page(session, sensor_id, year, page):
             problem = type(exception).__name__
             error = exception
 
-        logger.warning(f"Sensor {sensor_id}, {year}, page {page}: {problem} on attempt {attempt}/{MAX_ATTEMPTS}")
+        logger.warning(f"Sensor {sensor_id}, {datetime_from} to {datetime_to}, page {page}: {problem} on attempt {attempt}/{MAX_ATTEMPTS}")
 
         if attempt < MAX_ATTEMPTS:
             time.sleep(RETRY_DELAY * attempt)
 
     raise error
 
-# Retrieves every hourly row for a sensor in the given year
-def get_sensor_year(session, sensor_id, year):
+# Retrieves every hourly row for a sensor between two UTC times written as "YYYY-MM-DDTHH:MM:SSZ"
+def get_sensor_range(session, sensor_id, datetime_from, datetime_to):
     rows = []
     page = 1
 
     # A page with fewer rows than the limit is the last one
     while True:
-        page_rows = get_page(session, sensor_id, year, page)
+        page_rows = get_page(session, sensor_id, datetime_from, datetime_to, page)
         rows.extend(page_rows)
 
         if len(page_rows) < PAGE_LIMIT:
             return rows
 
         page += 1
+
+# Retrieves every hourly row for a sensor in the given year
+def get_sensor_year(session, sensor_id, year):
+    return get_sensor_range(session, sensor_id, f"{year}-01-01T00:00:00Z", f"{year + 1}-01-01T00:00:00Z")
