@@ -35,6 +35,7 @@ ANALYSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "analyse_errors.log"
 SEQUENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_sequence.log"
 COMPARISON_LOG_PATH = ROOT_DIR / "data" / "logs" / "compare_dense_gru_lstm.log"
 FINAL_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_final.log"
+TEST_LOG_PATH = ROOT_DIR / "data" / "logs" / "evaluate_test.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
@@ -149,6 +150,9 @@ DIAGNOSIS_SEEDS = [1, 2, 3]
 
 # The lambda chosen by the linear baseline
 DIAGNOSIS_LINEAR_LAMBDA = 1
+
+# Readings at or above this (µg/m³) are reported separately in the final evaluation, as test has far more than train
+EXTREME_MIN_PM25 = 100
 
 # Reading levels (µg/m³) used to group errors in the error analysis
 ERROR_LEVEL_EDGES = [0, 5, 10, 20, 35, 50, 100, 1000]
