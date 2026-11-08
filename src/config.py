@@ -34,6 +34,7 @@ DIAGNOSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "diagnose_train_dev.log"
 ANALYSIS_LOG_PATH = ROOT_DIR / "data" / "logs" / "analyse_errors.log"
 SEQUENCE_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_sequence.log"
 COMPARISON_LOG_PATH = ROOT_DIR / "data" / "logs" / "compare_dense_gru_lstm.log"
+FINAL_LOG_PATH = ROOT_DIR / "data" / "logs" / "train_final.log"
 
 # Local time zone
 TIMEZONE = "America/Toronto"
