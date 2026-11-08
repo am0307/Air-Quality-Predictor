@@ -76,7 +76,7 @@ def run_search():
     setup_logging(SEARCH_LOG_PATH)
 
     # Each trial's progress is saved to a file, so the per-epoch messages are not needed here
-    logging.getLogger("train_dense").setLevel(logging.WARNING)
+    logging.getLogger("training").setLevel(logging.WARNING)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info(f"Training on {device}")
