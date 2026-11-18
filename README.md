@@ -1,6 +1,8 @@
 # AQ Forecaster
 
-Forecasts fine particulate matter (PM2.5) one hour ahead at four Toronto air quality stations, using hourly readings from OpenAQ and wind from Toronto Pearson airport. The final model is a dense neural network built with PyTorch. On held-out data from March to November 2026, its root mean squared error (RMSE) was 14.6% lower than persistence, which predicts that the next hour will equal the latest reading.
+Forecasts fine particulate matter (PM2.5) one hour ahead at four Toronto air quality stations, using hourly readings from OpenAQ and wind from Toronto Pearson airport. The model is a dense neural network built with PyTorch.
+
+Its biggest gain is in the hardest hours to forecast: sudden smoke arrivals, when PM2.5 rises by 10 µg/m³ or more within an hour. On held-out data from March to November 2026, it cut root mean squared error (RMSE) in those hours by 27.6% compared with persistence, which predicts that the next hour will equal the latest reading. A linear regression baseline cut it by 16.2%. Across all hours, the network cut RMSE by 14.6%, a little less than linear regression's 16.7%. The network was chosen on development data, and the test set played no part in that choice.
 
 ## Results
 

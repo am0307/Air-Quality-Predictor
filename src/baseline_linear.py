@@ -12,7 +12,7 @@ from training import calculate_cost, create_tensors, evaluate_model
 
 logger = logging.getLogger(__name__)
 
-# The L2 penalty, lambda/(2m) * sum(w^2), which leaves the bias out as in the course
+# The L2 penalty, lambda/(2m) * sum(w^2), which leaves the bias out
 def calculate_penalty(model, lambd, m):
     return lambd / (2 * m) * (model.weight ** 2).sum()
 
